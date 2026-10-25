@@ -1,4 +1,4 @@
--- [[ SAE EGG SNIPER - NUR MAP-SPAWNS (KEINE SPIELER-EIER) ]] --
+-- [[ SAE EGG SNIPER - CLEAN WORLD SPAWN EDITION ]] --
 
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
@@ -9,11 +9,11 @@ local HttpService = game:GetService("HttpService")
 
 local player = Players.LocalPlayer
 
-local existing = CoreGui:FindFirstChild("SAE_MapSniper") or player.PlayerGui:FindFirstChild("SAE_MapSniper")
+local existing = CoreGui:FindFirstChild("SAE_CleanSniper") or player.PlayerGui:FindFirstChild("SAE_CleanSniper")
 if existing then existing:Destroy() end
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "SAE_MapSniper"
+screenGui.Name = "SAE_CleanSniper"
 screenGui.ResetOnSpawn = false
 pcall(function() screenGui.Parent = CoreGui end)
 if not screenGui.Parent then
@@ -53,7 +53,7 @@ fixCover.Parent = titleBar
 local titleText = Instance.new("TextLabel")
 titleText.Size = UDim2.new(0.6, 0, 1, 0)
 titleText.Position = UDim2.new(0, 14, 0, 0)
-titleText.Text = "⚡ SAE MAP EGG SNIPER"
+titleText.Text = "⚡ SAE WORLD EGG SNIPER"
 titleText.TextColor3 = Color3.fromRGB(255, 215, 0)
 titleText.BackgroundTransparency = 1
 titleText.Font = Enum.Font.GothamBold
@@ -147,14 +147,16 @@ end
 local function getActiveEggs()
 	local eggsData = {}
 	pcall(function()
+		-- Wir suchen nur nach Objekten, die explizit in Welt-Containern liegen oder direkt im Workspace (aber keine Spieler)
 		for _, obj in ipairs(Workspace:GetDescendants()) do
-			-- Prüfen ob das Ei innerhalb eines Spieler-Ordners liegt (z.B. "Plots", "Bases", "PlayerItems") -> Wenn ja, überspringen!
-			local parentPath = obj:GetFullName():lower()
-			if not parentPath:find("plot") and not parentPath:find("base") and not parentPath:find("inventory") and not parentPath:find("storage") and not parentPath:find("character") then
+			local path = obj:GetFullName():lower()
+			
+			-- Absolute Ausschluss-Regel für Spieler-Basen, Plots, Character und UI
+			if not path:find("plot") and not path:find("base") and not path:find("player") and not path:find("character") and not path:find("storage") then
 				
 				if obj:IsA("Model") or obj:IsA("BasePart") then
 					local rarity = obj:GetAttribute("Rarity") or obj:GetAttribute("Tier")
-					local value = obj:GetAttribute("Value") or obj:GetAttribute("Price") or obj:GetAttribute("Cash")
+					local value = obj:GetAttribute("Value") or obj:GetAttribute("Price") or 0
 					
 					if type(rarity) == "string" and RARITY_PRIORITY[rarity] then
 						local pos = Vector3.zero
@@ -162,18 +164,15 @@ local function getActiveEggs()
 						
 						if obj:IsA("Model") then
 							local ok, p = pcall(function() return obj:GetPivot().Position end)
-							if ok then 
-								pos = p 
-								isValid = true
-							end
+							if ok then pos = p isValid = true end
 						elseif obj:IsA("BasePart") then
 							pos = obj.Position
 							isValid = true
 						end
 						
-						-- Nur echte Eier auf der Map (keine Spieler-IDs mit langen Nummernketten als Namen)
+						-- Zusätzlicher Check: Keine reinen Zahlen-IDs als Name (das sind meistens interne Spieler-Daten)
 						if isValid and pos ~= Vector3.zero and not obj.Name:match("^%d+$") then
-							local petName = obj:GetAttribute("PetName") or obj:GetAttribute("Pet") or obj:GetAttribute("Reward") or "Gespawned"
+							local petName = obj:GetAttribute("PetName") or obj:GetAttribute("Pet") or obj:GetAttribute("Reward") or "World Egg"
 							
 							table.insert(eggsData, {
 								Name = obj.Name,
@@ -182,7 +181,6 @@ local function getActiveEggs()
 								Value = type(value) == "number" and value or 0,
 								PetName = tostring(petName),
 								Priority = RARITY_PRIORITY[rarity],
-								InstanceId = obj:GetAttribute("ServerInstanceId") or game.JobId,
 								Position = pos
 							})
 						end
@@ -238,12 +236,13 @@ local function updateUI()
 		label.TextXAlignment = Enum.TextXAlignment.Left
 		label.Parent = itemFrame
 		
+		-- Server Hop Button
 		local joinBtn = Instance.new("TextButton")
 		joinBtn.Size = UDim2.new(0.24, 0, 0.7, 0)
 		joinBtn.Position = UDim2.new(0.47, 0, 0.15, 0)
 		joinBtn.BackgroundColor3 = Color3.fromRGB(34, 139, 34)
 		joinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		joinBtn.Text = "Join Server"
+		joinBtn.Text = "Server Hop"
 		joinBtn.Font = Enum.Font.GothamBold
 		joinBtn.TextSize = 11
 		joinBtn.Parent = itemFrame
@@ -267,6 +266,7 @@ local function updateUI()
 			end)
 		end)
 		
+		-- Instant Steal Button (Direkt zum echten Welt-Ei)
 		local stealBtn = Instance.new("TextButton")
 		stealBtn.Size = UDim2.new(0.24, 0, 0.7, 0)
 		stealBtn.Position = UDim2.new(0.73, 0, 0.15, 0)
@@ -309,4 +309,4 @@ task.spawn(function()
 	end
 end)
 
-print("SAE Map Sniper geladen!")
+print("SAE Clean World Sniper geladen!")
