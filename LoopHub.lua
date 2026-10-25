@@ -1,4 +1,4 @@
--- [[ SAE EGG SNIPER - ULTRA PRO EDITION ]] --
+-- [[ SAE EGG SNIPER - ULTRA PRO + REAL PETS & SERVER HOP ]] --
 
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
@@ -10,12 +10,12 @@ local HttpService = game:GetService("HttpService")
 local player = Players.LocalPlayer
 
 -- Altes GUI aufräumen
-local existing = CoreGui:FindFirstChild("SAE_UltraSniper") or player.PlayerGui:FindFirstChild("SAE_UltraSniper")
+local existing = CoreGui:FindFirstChild("SAE_AbsoluteSniper") or player.PlayerGui:FindFirstChild("SAE_AbsoluteSniper")
 if existing then existing:Destroy() end
 
 -- Haupt-ScreenGui
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "SAE_UltraSniper"
+screenGui.Name = "SAE_AbsoluteSniper"
 screenGui.ResetOnSpawn = false
 pcall(function() screenGui.Parent = CoreGui end)
 if not screenGui.Parent then
@@ -24,7 +24,7 @@ end
 
 -- Hauptfenster
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 460, 0, 420)
+mainFrame.Size = UDim2.new(0, 480, 0, 440)
 mainFrame.Position = UDim2.new(0.08, 0, 0.2, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
 mainFrame.BorderSizePixel = 0
@@ -38,7 +38,7 @@ corner.Parent = mainFrame
 
 -- Kopfzeile
 local titleBar = Instance.new("Frame")
-titleBar.Size = UDim2.new(1, 0, 0, 40)
+titleBar.Size = UDim2.new(1, 0, 0, 42)
 titleBar.BackgroundColor3 = Color3.fromRGB(24, 24, 34)
 titleBar.BorderSizePixel = 0
 titleBar.Parent = mainFrame
@@ -55,27 +55,27 @@ fixCover.BorderSizePixel = 0
 fixCover.Parent = titleBar
 
 local titleText = Instance.new("TextLabel")
-titleText.Size = UDim2.new(0.7, 0, 1, 0)
-titleText.Position = UDim2.new(0, 12, 0, 0)
-titleText.Text = "⚡ SAE EGG SNIPER"
+titleText.Size = UDim2.new(0.6, 0, 1, 0)
+titleText.Position = UDim2.new(0, 14, 0, 0)
+titleText.Text = "⚡ SAE EGG SNIPER | PRO"
 titleText.TextColor3 = Color3.fromRGB(255, 215, 0)
 titleText.BackgroundTransparency = 1
 titleText.Font = Enum.Font.GothamBold
-titleText.TextSize = 13
+titleText.TextSize = 14
 titleText.TextXAlignment = Enum.TextXAlignment.Left
 titleText.Parent = titleBar
 
--- Container für die Inhalts-Liste (wird beim Minimieren ausgeblendet)
+-- Container für Inhalte
 local contentContainer = Instance.new("Frame")
-contentContainer.Size = UDim2.new(1, 0, 1, -40)
-contentContainer.Position = UDim2.new(0, 0, 0, 40)
+contentContainer.Size = UDim2.new(1, 0, 1, -42)
+contentContainer.Position = UDim2.new(0, 0, 0, 42)
 contentContainer.BackgroundTransparency = 1
 contentContainer.Parent = mainFrame
 
 -- Schließen-Button (X)
 local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.new(0, 30, 0, 26)
-closeBtn.Position = UDim2.new(1, -35, 0, 7)
+closeBtn.Size = UDim2.new(0, 32, 0, 26)
+closeBtn.Position = UDim2.new(1, -38, 0, 8)
 closeBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
 closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 closeBtn.Text = "X"
@@ -93,8 +93,8 @@ end)
 
 -- Minimieren-Button (-)
 local minimizeBtn = Instance.new("TextButton")
-minimizeBtn.Size = UDim2.new(0, 30, 0, 26)
-minimizeBtn.Position = UDim2.new(1, -70, 0, 7)
+minimizeBtn.Size = UDim2.new(0, 32, 0, 26)
+minimizeBtn.Position = UDim2.new(1, -76, 0, 8)
 minimizeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
 minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 minimizeBtn.Text = "-"
@@ -111,10 +111,10 @@ minimizeBtn.MouseButton1Click:Connect(function()
 	isMinimized = not isMinimized
 	contentContainer.Visible = not isMinimized
 	if isMinimized then
-		mainFrame.Size = UDim2.new(0, 460, 0, 40)
+		mainFrame.Size = UDim2.new(0, 480, 0, 42)
 		minimizeBtn.Text = "+"
 	else
-		mainFrame.Size = UDim2.new(0, 460, 0, 420)
+		mainFrame.Size = UDim2.new(0, 480, 0, 440)
 		minimizeBtn.Text = "-"
 	end
 end)
@@ -154,13 +154,30 @@ local function findStealRemote()
 	return nil
 end
 
+-- Holt den echten Pet-Namen aus Attributen oder Kind-Objekten
+local function getPetName(obj)
+	local pet = obj:GetAttribute("PetName") or obj:GetAttribute("Pet") or obj:GetAttribute("Reward") or obj:GetAttribute("Contains") or obj:GetAttribute("HatchName")
+	if pet then return tostring(pet) end
+	
+	-- Falls das Pet als TextLabel oder String-Wert im Ei-Modell gespeichert ist
+	for _, child in ipairs(obj:GetChildren()) do
+		if child:IsA("StringValue") or child:IsA("IntValue") then
+			if child.Name:lower():find("pet") or child.Name:lower():find("reward") then
+				return tostring(child.Value)
+			end
+		elseif child:IsA("TextLabel") then
+			if child.Text ~= "" then return child.Text end
+		end
+	end
+	return "Unbekanntes Pet"
+end
+
 local function getActiveEggs()
 	local eggsData = {}
 	pcall(function()
 		for _, obj in ipairs(Workspace:GetDescendants()) do
 			local rarity = obj:GetAttribute("Rarity") or obj:GetAttribute("Tier")
 			local value = obj:GetAttribute("Value") or obj:GetAttribute("Price") or obj:GetAttribute("Cash")
-			local petName = obj:GetAttribute("PetName") or obj:GetAttribute("Contains") or obj:GetAttribute("HatchName") or "Unbekannt"
 			
 			if type(rarity) == "string" and RARITY_PRIORITY[rarity] then
 				local pos = Vector3.new(0,0,0)
@@ -176,7 +193,7 @@ local function getActiveEggs()
 					Model = obj,
 					Rarity = rarity,
 					Value = type(value) == "number" and value or 0,
-					PetName = tostring(petName),
+					PetName = getPetName(obj),
 					Priority = RARITY_PRIORITY[rarity],
 					InstanceId = obj:GetAttribute("ServerInstanceId") or game.JobId,
 					Position = pos
@@ -213,7 +230,7 @@ local function updateUI()
 			
 			-- Eier Karten-Design
 			local itemFrame = Instance.new("Frame")
-			itemFrame.Size = UDim2.new(1, 0, 0, 55)
+			itemFrame.Size = UDim2.new(1, 0, 0, 60)
 			itemFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 32)
 			itemFrame.BorderSizePixel = 0
 			itemFrame.Parent = scrollingFrame
@@ -223,20 +240,20 @@ local function updateUI()
 			itemCorner.Parent = itemFrame
 			
 			local label = Instance.new("TextLabel")
-			label.Size = UDim2.new(0.42, 0, 1, 0)
+			label.Size = UDim2.new(0.45, 0, 1, 0)
 			label.Position = UDim2.new(0, 10, 0, 0)
-			label.Text = string.format("[%s] %s\nPet: %s | Val: %d", eggData.Rarity, eggData.Name, eggData.PetName, eggData.Value)
+			label.Text = string.format("[%s] %s\nPet: %s\nWert: %d", eggData.Rarity, eggData.Name, eggData.PetName, eggData.Value)
 			label.TextColor3 = Color3.fromRGB(240, 240, 240)
 			label.BackgroundTransparency = 1
 			label.Font = Enum.Font.GothamSemibold
-			label.TextSize = 11
+			label.TextSize = 10
 			label.TextXAlignment = Enum.TextXAlignment.Left
 			label.Parent = itemFrame
 			
-			-- Server Join Button (Mit Server-Wechsel Fix)
+			-- Server Join Button (Mit echtem funktionierenden Server-Hop)
 			local joinBtn = Instance.new("TextButton")
-			joinBtn.Size = UDim2.new(0.25, 0, 0.7, 0)
-			joinBtn.Position = UDim2.new(0.44, 0, 0.15, 0)
+			joinBtn.Size = UDim2.new(0.24, 0, 0.7, 0)
+			joinBtn.Position = UDim2.new(0.47, 0, 0.15, 0)
 			joinBtn.BackgroundColor3 = Color3.fromRGB(34, 139, 34)
 			joinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 			joinBtn.Text = "Join Server"
@@ -250,11 +267,11 @@ local function updateUI()
 			
 			joinBtn.MouseButton1Click:Connect(function()
 				pcall(function()
-					-- Wenn keine Instanz-ID da ist, suche nach anderen Servern über Roblox API oder Teleport
+					-- Versucht zuerst in die spezifische Server-Instanz zu hüpfen
 					if eggData.InstanceId and eggData.InstanceId ~= game.JobId then
 						TeleportService:TeleportToPlaceInstance(game.PlaceId, eggData.InstanceId, player)
 					else
-						-- Fallback: Normaler Server Hop
+						-- Echtes automatisches Server-Hopping via Roblox API
 						local servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"))
 						for _, s in ipairs(servers.data) do
 							if s.id ~= game.JobId and s.playing < s.maxPlayers then
@@ -268,8 +285,8 @@ local function updateUI()
 			
 			-- Instant Steal Button
 			local stealBtn = Instance.new("TextButton")
-			stealBtn.Size = UDim2.new(0.25, 0, 0.7, 0)
-			stealBtn.Position = UDim2.new(0.71, 0, 0.15, 0)
+			stealBtn.Size = UDim2.new(0.24, 0, 0.7, 0)
+			stealBtn.Position = UDim2.new(0.73, 0, 0.15, 0)
 			stealBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
 			stealBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 			stealBtn.Text = "Instant Steal"
@@ -300,7 +317,7 @@ local function updateUI()
 		end
 	end
 	
-	scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, count * 63)
+	scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, count * 68)
 end
 
 task.spawn(function()
@@ -310,4 +327,4 @@ task.spawn(function()
 	end
 end)
 
-print("SAE Ultra Sniper erfolgreich geladen!")
+print("SAE Absolute Sniper erfolgreich geladen!")
