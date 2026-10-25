@@ -1,4 +1,4 @@
--- [[ SAE CLEAN PRO SNIPER - FIX FÜR ZAHLENCODES ]] --
+-- [[ SAE ULTIMATE FIX SNIPER - KEINE BASEN MEHR ]] --
 
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
@@ -9,11 +9,11 @@ local HttpService = game:GetService("HttpService")
 
 local player = Players.LocalPlayer
 
-local existing = CoreGui:FindFirstChild("SAE_CleanPro") or player.PlayerGui:FindFirstChild("SAE_CleanPro")
+local existing = CoreGui:FindFirstChild("SAE_UltimateSniper") or player.PlayerGui:FindFirstChild("SAE_UltimateSniper")
 if existing then existing:Destroy() end
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "SAE_CleanPro"
+screenGui.Name = "SAE_UltimateSniper"
 screenGui.ResetOnSpawn = false
 pcall(function() screenGui.Parent = CoreGui end)
 if not screenGui.Parent then
@@ -53,7 +53,7 @@ fixCover.Parent = titleBar
 local titleText = Instance.new("TextLabel")
 titleText.Size = UDim2.new(0.6, 0, 1, 0)
 titleText.Position = UDim2.new(0, 14, 0, 0)
-titleText.Text = "⚡ SAE CLEAN SNIPER"
+titleText.Text = "⚡ SAE ULTIMATE SNIPER"
 titleText.TextColor3 = Color3.fromRGB(255, 215, 0)
 titleText.BackgroundTransparency = 1
 titleText.Font = Enum.Font.GothamBold
@@ -144,17 +144,16 @@ local function findStealRemote()
 	return nil
 end
 
-local function scanGameObjects()
+local function scanMapEggs()
 	local foundData = {}
 	pcall(function()
 		for _, obj in ipairs(Workspace:GetDescendants()) do
 			local rarity = obj:GetAttribute("Rarity") or obj:GetAttribute("Tier")
 			if type(rarity) == "string" and RARITY_PRIORITY[rarity] then
-				-- WICHTIG: Überspringe alles, was reine Zahlen-IDs im Namen hat oder in Spieler-Basen liegt
-				local name = obj.Name
 				local path = obj:GetFullName():lower()
 				
-				if not name:match("^%d+_%d+") and not name:match("^%d+$") and not path:find("plot") and not path:find("base") then
+				-- STRENGER FILTER: Schließt alles aus, was auch nur im Entferntesten mit Basen, Plots, Spielern oder Nummern-IDs zu tun hat
+				if not path:find("plot") and not path:find("base") and not path:find("player") and not path:find("owner") and not obj.Name:match("^%d+") then
 					local pos = Vector3.zero
 					local valid = false
 					
@@ -167,10 +166,10 @@ local function scanGameObjects()
 					end
 					
 					if valid and pos ~= Vector3.zero then
-						local petName = obj:GetAttribute("PetName") or obj:GetAttribute("Pet") or name
+						local petName = obj:GetAttribute("PetName") or obj:GetAttribute("Pet") or obj.Name
 						table.insert(foundData, {
 							Instance = obj,
-							Name = name,
+							Name = obj.Name,
 							Rarity = rarity,
 							PetName = tostring(petName),
 							Priority = RARITY_PRIORITY[rarity],
@@ -198,7 +197,7 @@ local function updateUI()
 		end
 	end
 	
-	local items = scanGameObjects()
+	local items = scanMapEggs()
 	local count = 0
 	
 	for _, data in ipairs(items) do
@@ -300,4 +299,4 @@ task.spawn(function()
 	end
 end)
 
-print("SAE Clean Pro geladen!")
+print("SAE Ultimate Sniper geladen!")
