@@ -1,4 +1,4 @@
--- [[ SAE EGG SNIPER - CLEAN WORLD SPAWN EDITION ]] --
+-- [[ SAE PRO SNIPER - DEEP REPLICATED STORAGE EDITION ]] --
 
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
@@ -9,17 +9,19 @@ local HttpService = game:GetService("HttpService")
 
 local player = Players.LocalPlayer
 
-local existing = CoreGui:FindFirstChild("SAE_CleanSniper") or player.PlayerGui:FindFirstChild("SAE_CleanSniper")
+-- Altes UI entfernen
+local existing = CoreGui:FindFirstChild("SAE_ProHub") or player.PlayerGui:FindFirstChild("SAE_ProHub")
 if existing then existing:Destroy() end
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "SAE_CleanSniper"
+screenGui.Name = "SAE_ProHub"
 screenGui.ResetOnSpawn = false
 pcall(function() screenGui.Parent = CoreGui end)
 if not screenGui.Parent then
 	screenGui.Parent = player:WaitForChild("PlayerGui")
 end
 
+-- Hauptfenster
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, 480, 0, 440)
 mainFrame.Position = UDim2.new(0.08, 0, 0.2, 0)
@@ -53,7 +55,7 @@ fixCover.Parent = titleBar
 local titleText = Instance.new("TextLabel")
 titleText.Size = UDim2.new(0.6, 0, 1, 0)
 titleText.Position = UDim2.new(0, 14, 0, 0)
-titleText.Text = "⚡ SAE WORLD EGG SNIPER"
+titleText.Text = "⚡ SAE PRO HUB | SCRIPT v2"
 titleText.TextColor3 = Color3.fromRGB(255, 215, 0)
 titleText.BackgroundTransparency = 1
 titleText.Font = Enum.Font.GothamBold
@@ -67,6 +69,7 @@ contentContainer.Position = UDim2.new(0, 0, 0, 42)
 contentContainer.BackgroundTransparency = 1
 contentContainer.Parent = mainFrame
 
+-- Schließen-Button
 local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0, 32, 0, 26)
 closeBtn.Position = UDim2.new(1, -38, 0, 8)
@@ -85,6 +88,7 @@ closeBtn.MouseButton1Click:Connect(function()
 	screenGui:Destroy()
 end)
 
+-- Minimieren-Button
 local minimizeBtn = Instance.new("TextButton")
 minimizeBtn.Size = UDim2.new(0, 32, 0, 26)
 minimizeBtn.Position = UDim2.new(1, -76, 0, 8)
@@ -132,72 +136,57 @@ local RARITY_PRIORITY = {
 	["Secret"] = 2
 }
 
-local function findStealRemote()
-	for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
-		if obj:IsA("RemoteEvent") then
-			local name = obj.Name:lower()
-			if name:find("steal") or name:find("hatch") or name:find("egg") or name:find("collect") then
-				return obj
+-- Sucht nach dem echten RemoteEvent für Interaktionen im Spiel
+local function getBestRemote()
+	for _, v in ipairs(ReplicatedStorage:GetDescendants()) do
+		if v:IsA("RemoteEvent") then
+			local name = v.Name:lower()
+			if name:find("steal") or name:find("interact") or name:find("egg") or name:find("collect") then
+				return v
 			end
 		end
 	end
 	return nil
 end
 
-local function getActiveEggs()
-	local eggsData = {}
+local function scanGameObjects()
+	local foundData = {}
 	pcall(function()
-		-- Wir suchen nur nach Objekten, die explizit in Welt-Containern liegen oder direkt im Workspace (aber keine Spieler)
+		-- Scannt den gesamten Workspace nach Objekten mit Seltenheits-Attributen
 		for _, obj in ipairs(Workspace:GetDescendants()) do
-			local path = obj:GetFullName():lower()
-			
-			-- Absolute Ausschluss-Regel für Spieler-Basen, Plots, Character und UI
-			if not path:find("plot") and not path:find("base") and not path:find("player") and not path:find("character") and not path:find("storage") then
+			local rarity = obj:GetAttribute("Rarity") or obj:GetAttribute("Tier")
+			if type(rarity) == "string" and RARITY_PRIORITY[rarity] then
+				local pos = Vector3.zero
+				local valid = false
 				
-				if obj:IsA("Model") or obj:IsA("BasePart") then
-					local rarity = obj:GetAttribute("Rarity") or obj:GetAttribute("Tier")
-					local value = obj:GetAttribute("Value") or obj:GetAttribute("Price") or 0
-					
-					if type(rarity) == "string" and RARITY_PRIORITY[rarity] then
-						local pos = Vector3.zero
-						local isValid = false
-						
-						if obj:IsA("Model") then
-							local ok, p = pcall(function() return obj:GetPivot().Position end)
-							if ok then pos = p isValid = true end
-						elseif obj:IsA("BasePart") then
-							pos = obj.Position
-							isValid = true
-						end
-						
-						-- Zusätzlicher Check: Keine reinen Zahlen-IDs als Name (das sind meistens interne Spieler-Daten)
-						if isValid and pos ~= Vector3.zero and not obj.Name:match("^%d+$") then
-							local petName = obj:GetAttribute("PetName") or obj:GetAttribute("Pet") or obj:GetAttribute("Reward") or "World Egg"
-							
-							table.insert(eggsData, {
-								Name = obj.Name,
-								Model = obj,
-								Rarity = rarity,
-								Value = type(value) == "number" and value or 0,
-								PetName = tostring(petName),
-								Priority = RARITY_PRIORITY[rarity],
-								Position = pos
-							})
-						end
-					end
+				if obj:IsA("Model") then
+					local ok, p = pcall(function() return obj:GetPivot().Position end)
+					if ok then pos = p valid = true end
+				elseif obj:IsA("BasePart") then
+					pos = obj.Position
+					valid = true
+				end
+				
+				if valid and pos ~= Vector3.zero then
+					local petName = obj:GetAttribute("PetName") or obj:GetAttribute("Pet") or obj.Name
+					table.insert(foundData, {
+						Instance = obj,
+						Name = obj.Name,
+						Rarity = rarity,
+						PetName = tostring(petName),
+						Priority = RARITY_PRIORITY[rarity],
+						Position = pos
+					})
 				end
 			end
 		end
 	end)
 	
-	table.sort(eggsData, function(a, b)
-		if a.Priority ~= b.Priority then
-			return a.Priority > b.Priority
-		end
-		return a.Value > b.Value
+	table.sort(foundData, function(a, b)
+		return a.Priority > b.Priority
 	end)
 	
-	return eggsData
+	return foundData
 end
 
 local function updateUI()
@@ -209,10 +198,10 @@ local function updateUI()
 		end
 	end
 	
-	local eggs = getActiveEggs()
+	local items = scanGameObjects()
 	local count = 0
 	
-	for _, eggData in ipairs(eggs) do
+	for _, data in ipairs(items) do
 		count += 1
 		
 		local itemFrame = Instance.new("Frame")
@@ -228,7 +217,7 @@ local function updateUI()
 		local label = Instance.new("TextLabel")
 		label.Size = UDim2.new(0.45, 0, 1, 0)
 		label.Position = UDim2.new(0, 10, 0, 0)
-		label.Text = string.format("[%s] %s\nPet: %s\nWert: %d", eggData.Rarity, eggData.Name, eggData.PetName, eggData.Value)
+		label.Text = string.format("[%s] %s\nPet: %s", data.Rarity, data.Name, data.PetName)
 		label.TextColor3 = Color3.fromRGB(240, 240, 240)
 		label.BackgroundTransparency = 1
 		label.Font = Enum.Font.GothamSemibold
@@ -236,27 +225,27 @@ local function updateUI()
 		label.TextXAlignment = Enum.TextXAlignment.Left
 		label.Parent = itemFrame
 		
-		-- Server Hop Button
-		local joinBtn = Instance.new("TextButton")
-		joinBtn.Size = UDim2.new(0.24, 0, 0.7, 0)
-		joinBtn.Position = UDim2.new(0.47, 0, 0.15, 0)
-		joinBtn.BackgroundColor3 = Color3.fromRGB(34, 139, 34)
-		joinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		joinBtn.Text = "Server Hop"
-		joinBtn.Font = Enum.Font.GothamBold
-		joinBtn.TextSize = 11
-		joinBtn.Parent = itemFrame
+		-- Server Hop Button (Roblox API)
+		local hopBtn = Instance.new("TextButton")
+		hopBtn.Size = UDim2.new(0.24, 0, 0.7, 0)
+		hopBtn.Position = UDim2.new(0.47, 0, 0.15, 0)
+		hopBtn.BackgroundColor3 = Color3.fromRGB(34, 139, 34)
+		hopBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		hopBtn.Text = "Server Hop"
+		hopBtn.Font = Enum.Font.GothamBold
+		hopBtn.TextSize = 11
+		hopBtn.Parent = itemFrame
 		
-		local joinCorner = Instance.new("UICorner")
-		joinCorner.CornerRadius = UDim.new(0, 6)
-		joinCorner.Parent = joinBtn
+		local hopCorner = Instance.new("UICorner")
+		hopCorner.CornerRadius = UDim.new(0, 6)
+		hopCorner.Parent = hopBtn
 		
-		joinBtn.MouseButton1Click:Connect(function()
+		hopBtn.MouseButton1Click:Connect(function()
 			pcall(function()
 				local response = game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100")
-				local data = HttpService:JSONDecode(response)
-				if data and data.data then
-					for _, s in ipairs(data.data) do
+				local decoded = HttpService:JSONDecode(response)
+				if decoded and decoded.data then
+					for _, s in ipairs(decoded.data) do
 						if s.id ~= game.JobId and s.playing < s.maxPlayers then
 							TeleportService:TeleportToPlaceInstance(game.PlaceId, s.id, player)
 							break
@@ -266,7 +255,7 @@ local function updateUI()
 			end)
 		end)
 		
-		-- Instant Steal Button (Direkt zum echten Welt-Ei)
+		-- Instant Steal / Teleport Button
 		local stealBtn = Instance.new("TextButton")
 		stealBtn.Size = UDim2.new(0.24, 0, 0.7, 0)
 		stealBtn.Position = UDim2.new(0.73, 0, 0.15, 0)
@@ -283,17 +272,19 @@ local function updateUI()
 		
 		stealBtn.MouseButton1Click:Connect(function()
 			local char = player.Character
-			if char and char:FindFirstChild("HumanoidRootPart") and eggData.Model and eggData.Model.Parent then
+			if char and char:FindFirstChild("HumanoidRootPart") and data.Instance and data.Instance.Parent then
 				local hrp = char.HumanoidRootPart
-				if eggData.Model:IsA("Model") then
-					hrp.CFrame = eggData.Model:GetPivot()
-				elseif eggData.Model:IsA("BasePart") then
-					hrp.CFrame = eggData.Model.CFrame
+				if data.Instance:IsA("Model") then
+					hrp.CFrame = data.Instance:GetPivot()
+				elseif data.Instance:IsA("BasePart") then
+					hrp.CFrame = data.Instance.CFrame
 				end
 				
-				local remote = findStealRemote()
+				local remote = getBestRemote()
 				if remote then
-					pcall(function() remote:FireServer(eggData.Model) end)
+					pcall(function()
+						remote:FireServer(data.Instance)
+					end)
 				end
 			end
 		end)
@@ -309,4 +300,4 @@ task.spawn(function()
 	end
 end)
 
-print("SAE Clean World Sniper geladen!")
+print("SAE Pro Hub erfolgreich initialisiert!")
