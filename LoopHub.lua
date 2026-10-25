@@ -1,4 +1,4 @@
--- [[ SAE EGG SNIPER - PERFEKTIONIERTE VERSION ]] --
+-- [[ SAE EGG SNIPER - NUR MAP-SPAWNS (KEINE SPIELER-EIER) ]] --
 
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
@@ -9,11 +9,11 @@ local HttpService = game:GetService("HttpService")
 
 local player = Players.LocalPlayer
 
-local existing = CoreGui:FindFirstChild("SAE_PerfectSniper") or player.PlayerGui:FindFirstChild("SAE_PerfectSniper")
+local existing = CoreGui:FindFirstChild("SAE_MapSniper") or player.PlayerGui:FindFirstChild("SAE_MapSniper")
 if existing then existing:Destroy() end
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "SAE_PerfectSniper"
+screenGui.Name = "SAE_MapSniper"
 screenGui.ResetOnSpawn = false
 pcall(function() screenGui.Parent = CoreGui end)
 if not screenGui.Parent then
@@ -53,7 +53,7 @@ fixCover.Parent = titleBar
 local titleText = Instance.new("TextLabel")
 titleText.Size = UDim2.new(0.6, 0, 1, 0)
 titleText.Position = UDim2.new(0, 14, 0, 0)
-titleText.Text = "⚡ SAE EGG SNIPER | PRO"
+titleText.Text = "⚡ SAE MAP EGG SNIPER"
 titleText.TextColor3 = Color3.fromRGB(255, 215, 0)
 titleText.BackgroundTransparency = 1
 titleText.Font = Enum.Font.GothamBold
@@ -144,64 +144,48 @@ local function findStealRemote()
 	return nil
 end
 
--- Verbesserte Pet-Namenssuche
-local function getPetName(obj)
-	-- Prüft alle gängigen Attribute
-	local pet = obj:GetAttribute("PetName") or obj:GetAttribute("Pet") or obj:GetAttribute("Reward") or obj:GetAttribute("Contains") or obj:GetAttribute("HatchName") or obj:GetAttribute("DisplayName")
-	if pet then return tostring(pet) end
-	
-	-- Durchsucht das Objekt nach beschreibenden Werten
-	for _, child in ipairs(obj:GetDescendants()) do
-		if child:IsA("StringValue") then
-			local nameLower = child.Name:lower()
-			if nameLower:find("pet") or nameLower:find("reward") or nameLower:find("content") then
-				if child.Value ~= "" then return tostring(child.Value) end
-			end
-		elseif child:IsA("TextLabel") then
-			if child.Text ~= "" and not child.Text:find("Val") then
-				return child.Text
-			end
-		end
-	end
-	
-	-- Falls kein Name gefunden wird, leitet er ihn vom Namen des Ei-Modells ab
-	return obj.Name ~= "" and obj.Name or "Legendäres Pet"
-end
-
 local function getActiveEggs()
 	local eggsData = {}
 	pcall(function()
 		for _, obj in ipairs(Workspace:GetDescendants()) do
-			if obj:IsA("Model") or obj:IsA("BasePart") then
-				local rarity = obj:GetAttribute("Rarity") or obj:GetAttribute("Tier")
-				local value = obj:GetAttribute("Value") or obj:GetAttribute("Price") or obj:GetAttribute("Cash")
+			-- Prüfen ob das Ei innerhalb eines Spieler-Ordners liegt (z.B. "Plots", "Bases", "PlayerItems") -> Wenn ja, überspringen!
+			local parentPath = obj:GetFullName():lower()
+			if not parentPath:find("plot") and not parentPath:find("base") and not parentPath:find("inventory") and not parentPath:find("storage") and not parentPath:find("character") then
 				
-				if type(rarity) == "string" and RARITY_PRIORITY[rarity] then
-					local pos = Vector3.zero
-					local isValid = false
+				if obj:IsA("Model") or obj:IsA("BasePart") then
+					local rarity = obj:GetAttribute("Rarity") or obj:GetAttribute("Tier")
+					local value = obj:GetAttribute("Value") or obj:GetAttribute("Price") or obj:GetAttribute("Cash")
 					
-					if obj:IsA("Model") then
-						local ok, p = pcall(function() return obj:GetPivot().Position end)
-						if ok then 
-							pos = p 
+					if type(rarity) == "string" and RARITY_PRIORITY[rarity] then
+						local pos = Vector3.zero
+						local isValid = false
+						
+						if obj:IsA("Model") then
+							local ok, p = pcall(function() return obj:GetPivot().Position end)
+							if ok then 
+								pos = p 
+								isValid = true
+							end
+						elseif obj:IsA("BasePart") then
+							pos = obj.Position
 							isValid = true
 						end
-					elseif obj:IsA("BasePart") then
-						pos = obj.Position
-						isValid = true
-					end
-					
-					if isValid and pos ~= Vector3.zero then
-						table.insert(eggsData, {
-							Name = obj.Name,
-							Model = obj,
-							Rarity = rarity,
-							Value = type(value) == "number" and value or 0,
-							PetName = getPetName(obj),
-							Priority = RARITY_PRIORITY[rarity],
-							InstanceId = obj:GetAttribute("ServerInstanceId") or game.JobId,
-							Position = pos
-						})
+						
+						-- Nur echte Eier auf der Map (keine Spieler-IDs mit langen Nummernketten als Namen)
+						if isValid and pos ~= Vector3.zero and not obj.Name:match("^%d+$") then
+							local petName = obj:GetAttribute("PetName") or obj:GetAttribute("Pet") or obj:GetAttribute("Reward") or "Gespawned"
+							
+							table.insert(eggsData, {
+								Name = obj.Name,
+								Model = obj,
+								Rarity = rarity,
+								Value = type(value) == "number" and value or 0,
+								PetName = tostring(petName),
+								Priority = RARITY_PRIORITY[rarity],
+								InstanceId = obj:GetAttribute("ServerInstanceId") or game.JobId,
+								Position = pos
+							})
+						end
 					end
 				end
 			end
@@ -270,7 +254,6 @@ local function updateUI()
 		
 		joinBtn.MouseButton1Click:Connect(function()
 			pcall(function()
-				-- Zuverlässiger Server-Wechsel via Roblox Public API
 				local response = game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100")
 				local data = HttpService:JSONDecode(response)
 				if data and data.data then
@@ -326,4 +309,4 @@ task.spawn(function()
 	end
 end)
 
-print("SAE Perfect Sniper geladen!")
+print("SAE Map Sniper geladen!")
