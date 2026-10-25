@@ -1,4 +1,4 @@
--- [[ SAE PRO SNIPER - DEEP REPLICATED STORAGE EDITION ]] --
+-- [[ SAE CLEAN PRO SNIPER - FIX FÜR ZAHLENCODES ]] --
 
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
@@ -9,19 +9,17 @@ local HttpService = game:GetService("HttpService")
 
 local player = Players.LocalPlayer
 
--- Altes UI entfernen
-local existing = CoreGui:FindFirstChild("SAE_ProHub") or player.PlayerGui:FindFirstChild("SAE_ProHub")
+local existing = CoreGui:FindFirstChild("SAE_CleanPro") or player.PlayerGui:FindFirstChild("SAE_CleanPro")
 if existing then existing:Destroy() end
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "SAE_ProHub"
+screenGui.Name = "SAE_CleanPro"
 screenGui.ResetOnSpawn = false
 pcall(function() screenGui.Parent = CoreGui end)
 if not screenGui.Parent then
 	screenGui.Parent = player:WaitForChild("PlayerGui")
 end
 
--- Hauptfenster
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, 480, 0, 440)
 mainFrame.Position = UDim2.new(0.08, 0, 0.2, 0)
@@ -55,7 +53,7 @@ fixCover.Parent = titleBar
 local titleText = Instance.new("TextLabel")
 titleText.Size = UDim2.new(0.6, 0, 1, 0)
 titleText.Position = UDim2.new(0, 14, 0, 0)
-titleText.Text = "⚡ SAE PRO HUB | SCRIPT v2"
+titleText.Text = "⚡ SAE CLEAN SNIPER"
 titleText.TextColor3 = Color3.fromRGB(255, 215, 0)
 titleText.BackgroundTransparency = 1
 titleText.Font = Enum.Font.GothamBold
@@ -69,7 +67,6 @@ contentContainer.Position = UDim2.new(0, 0, 0, 42)
 contentContainer.BackgroundTransparency = 1
 contentContainer.Parent = mainFrame
 
--- Schließen-Button
 local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0, 32, 0, 26)
 closeBtn.Position = UDim2.new(1, -38, 0, 8)
@@ -88,7 +85,6 @@ closeBtn.MouseButton1Click:Connect(function()
 	screenGui:Destroy()
 end)
 
--- Minimieren-Button
 local minimizeBtn = Instance.new("TextButton")
 minimizeBtn.Size = UDim2.new(0, 32, 0, 26)
 minimizeBtn.Position = UDim2.new(1, -76, 0, 8)
@@ -136,13 +132,12 @@ local RARITY_PRIORITY = {
 	["Secret"] = 2
 }
 
--- Sucht nach dem echten RemoteEvent für Interaktionen im Spiel
-local function getBestRemote()
-	for _, v in ipairs(ReplicatedStorage:GetDescendants()) do
-		if v:IsA("RemoteEvent") then
-			local name = v.Name:lower()
+local function findStealRemote()
+	for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
+		if obj:IsA("RemoteEvent") then
+			local name = obj.Name:lower()
 			if name:find("steal") or name:find("interact") or name:find("egg") or name:find("collect") then
-				return v
+				return obj
 			end
 		end
 	end
@@ -152,31 +147,36 @@ end
 local function scanGameObjects()
 	local foundData = {}
 	pcall(function()
-		-- Scannt den gesamten Workspace nach Objekten mit Seltenheits-Attributen
 		for _, obj in ipairs(Workspace:GetDescendants()) do
 			local rarity = obj:GetAttribute("Rarity") or obj:GetAttribute("Tier")
 			if type(rarity) == "string" and RARITY_PRIORITY[rarity] then
-				local pos = Vector3.zero
-				local valid = false
+				-- WICHTIG: Überspringe alles, was reine Zahlen-IDs im Namen hat oder in Spieler-Basen liegt
+				local name = obj.Name
+				local path = obj:GetFullName():lower()
 				
-				if obj:IsA("Model") then
-					local ok, p = pcall(function() return obj:GetPivot().Position end)
-					if ok then pos = p valid = true end
-				elseif obj:IsA("BasePart") then
-					pos = obj.Position
-					valid = true
-				end
-				
-				if valid and pos ~= Vector3.zero then
-					local petName = obj:GetAttribute("PetName") or obj:GetAttribute("Pet") or obj.Name
-					table.insert(foundData, {
-						Instance = obj,
-						Name = obj.Name,
-						Rarity = rarity,
-						PetName = tostring(petName),
-						Priority = RARITY_PRIORITY[rarity],
-						Position = pos
-					})
+				if not name:match("^%d+_%d+") and not name:match("^%d+$") and not path:find("plot") and not path:find("base") then
+					local pos = Vector3.zero
+					local valid = false
+					
+					if obj:IsA("Model") then
+						local ok, p = pcall(function() return obj:GetPivot().Position end)
+						if ok then pos = p valid = true end
+					elseif obj:IsA("BasePart") then
+						pos = obj.Position
+						valid = true
+					end
+					
+					if valid and pos ~= Vector3.zero then
+						local petName = obj:GetAttribute("PetName") or obj:GetAttribute("Pet") or name
+						table.insert(foundData, {
+							Instance = obj,
+							Name = name,
+							Rarity = rarity,
+							PetName = tostring(petName),
+							Priority = RARITY_PRIORITY[rarity],
+							Position = pos
+						})
+					end
 				end
 			end
 		end
@@ -225,7 +225,7 @@ local function updateUI()
 		label.TextXAlignment = Enum.TextXAlignment.Left
 		label.Parent = itemFrame
 		
-		-- Server Hop Button (Roblox API)
+		-- Server Hop Button
 		local hopBtn = Instance.new("TextButton")
 		hopBtn.Size = UDim2.new(0.24, 0, 0.7, 0)
 		hopBtn.Position = UDim2.new(0.47, 0, 0.15, 0)
@@ -255,7 +255,7 @@ local function updateUI()
 			end)
 		end)
 		
-		-- Instant Steal / Teleport Button
+		-- Instant Steal Button
 		local stealBtn = Instance.new("TextButton")
 		stealBtn.Size = UDim2.new(0.24, 0, 0.7, 0)
 		stealBtn.Position = UDim2.new(0.73, 0, 0.15, 0)
@@ -280,7 +280,7 @@ local function updateUI()
 					hrp.CFrame = data.Instance.CFrame
 				end
 				
-				local remote = getBestRemote()
+				local remote = findStealRemote()
 				if remote then
 					pcall(function()
 						remote:FireServer(data.Instance)
@@ -300,4 +300,4 @@ task.spawn(function()
 	end
 end)
 
-print("SAE Pro Hub erfolgreich initialisiert!")
+print("SAE Clean Pro geladen!")
