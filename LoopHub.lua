@@ -1,20 +1,21 @@
--- [[ SAE EGG SNIPER - PRO EDITION WITH ADVANCED STEAL ]] --
+-- [[ SAE EGG SNIPER - ULTRA PRO EDITION ]] --
 
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
 
 local player = Players.LocalPlayer
 
 -- Altes GUI aufräumen
-local existing = CoreGui:FindFirstChild("SAE_ProSniper") or player.PlayerGui:FindFirstChild("SAE_ProSniper")
+local existing = CoreGui:FindFirstChild("SAE_UltraSniper") or player.PlayerGui:FindFirstChild("SAE_UltraSniper")
 if existing then existing:Destroy() end
 
 -- Haupt-ScreenGui
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "SAE_ProSniper"
+screenGui.Name = "SAE_UltraSniper"
 screenGui.ResetOnSpawn = false
 pcall(function() screenGui.Parent = CoreGui end)
 if not screenGui.Parent then
@@ -23,55 +24,110 @@ end
 
 -- Hauptfenster
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 450, 0, 480)
+mainFrame.Size = UDim2.new(0, 460, 0, 420)
 mainFrame.Position = UDim2.new(0.08, 0, 0.2, 0)
-mainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 24)
+mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
 mainFrame.BorderSizePixel = 0
 mainFrame.Active = true
 mainFrame.Draggable = true
 mainFrame.Parent = screenGui
 
 local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 10)
+corner.CornerRadius = UDim.new(0, 12)
 corner.Parent = mainFrame
 
--- Kopfzeile / Titel
+-- Kopfzeile
 local titleBar = Instance.new("Frame")
-titleBar.Size = UDim2.new(1, 0, 0, 45)
-titleBar.BackgroundColor3 = Color3.fromRGB(28, 28, 38)
+titleBar.Size = UDim2.new(1, 0, 0, 40)
+titleBar.BackgroundColor3 = Color3.fromRGB(24, 24, 34)
 titleBar.BorderSizePixel = 0
 titleBar.Parent = mainFrame
 
 local titleCorner = Instance.new("UICorner")
-titleCorner.CornerRadius = UDim.new(0, 10)
+titleCorner.CornerRadius = UDim.new(0, 12)
 titleCorner.Parent = titleBar
 
 local fixCover = Instance.new("Frame")
 fixCover.Size = UDim2.new(1, 0, 0, 10)
 fixCover.Position = UDim2.new(0, 0, 1, -10)
-fixCover.BackgroundColor3 = Color3.fromRGB(28, 28, 38)
+fixCover.BackgroundColor3 = Color3.fromRGB(24, 24, 34)
 fixCover.BorderSizePixel = 0
 fixCover.Parent = titleBar
 
 local titleText = Instance.new("TextLabel")
-titleText.Size = UDim2.new(1, 0, 1, 0)
-titleText.Text = "  ⚡ SAE EGG SNIPER | INSTANT STEAL"
+titleText.Size = UDim2.new(0.7, 0, 1, 0)
+titleText.Position = UDim2.new(0, 12, 0, 0)
+titleText.Text = "⚡ SAE EGG SNIPER"
 titleText.TextColor3 = Color3.fromRGB(255, 215, 0)
 titleText.BackgroundTransparency = 1
 titleText.Font = Enum.Font.GothamBold
-titleText.TextSize = 14
+titleText.TextSize = 13
 titleText.TextXAlignment = Enum.TextXAlignment.Left
 titleText.Parent = titleBar
 
+-- Container für die Inhalts-Liste (wird beim Minimieren ausgeblendet)
+local contentContainer = Instance.new("Frame")
+contentContainer.Size = UDim2.new(1, 0, 1, -40)
+contentContainer.Position = UDim2.new(0, 0, 0, 40)
+contentContainer.BackgroundTransparency = 1
+contentContainer.Parent = mainFrame
+
+-- Schließen-Button (X)
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 30, 0, 26)
+closeBtn.Position = UDim2.new(1, -35, 0, 7)
+closeBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.Text = "X"
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextSize = 12
+closeBtn.Parent = titleBar
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 6)
+closeCorner.Parent = closeBtn
+
+closeBtn.MouseButton1Click:Connect(function()
+	screenGui:Destroy()
+end)
+
+-- Minimieren-Button (-)
+local minimizeBtn = Instance.new("TextButton")
+minimizeBtn.Size = UDim2.new(0, 30, 0, 26)
+minimizeBtn.Position = UDim2.new(1, -70, 0, 7)
+minimizeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+minimizeBtn.Text = "-"
+minimizeBtn.Font = Enum.Font.GothamBold
+minimizeBtn.TextSize = 14
+minimizeBtn.Parent = titleBar
+
+local minCorner = Instance.new("UICorner")
+minCorner.CornerRadius = UDim.new(0, 6)
+minCorner.Parent = minimizeBtn
+
+local isMinimized = false
+minimizeBtn.MouseButton1Click:Connect(function()
+	isMinimized = not isMinimized
+	contentContainer.Visible = not isMinimized
+	if isMinimized then
+		mainFrame.Size = UDim2.new(0, 460, 0, 40)
+		minimizeBtn.Text = "+"
+	else
+		mainFrame.Size = UDim2.new(0, 460, 0, 420)
+		minimizeBtn.Text = "-"
+	end
+end)
+
 -- Scrolling Frame
 local scrollingFrame = Instance.new("ScrollingFrame")
-scrollingFrame.Size = UDim2.new(1, -16, 1, -60)
-scrollingFrame.Position = UDim2.new(0, 8, 0, 52)
+scrollingFrame.Size = UDim2.new(1, -16, 1, -12)
+scrollingFrame.Position = UDim2.new(0, 8, 0, 6)
 scrollingFrame.BackgroundTransparency = 1
 scrollingFrame.BorderSizePixel = 0
 scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-scrollingFrame.ScrollBarThickness = 6
-scrollingFrame.Parent = mainFrame
+scrollingFrame.ScrollBarThickness = 5
+scrollingFrame.Parent = contentContainer
 
 local uiListLayout = Instance.new("UIListLayout")
 uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -86,7 +142,6 @@ local RARITY_PRIORITY = {
 	["Normal"] = 1
 }
 
--- Sucht im Spiel nach einem RemoteEvent für den Diebstahl
 local function findStealRemote()
 	for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
 		if obj:IsA("RemoteEvent") then
@@ -101,7 +156,6 @@ end
 
 local function getActiveEggs()
 	local eggsData = {}
-	
 	pcall(function()
 		for _, obj in ipairs(Workspace:GetDescendants()) do
 			local rarity = obj:GetAttribute("Rarity") or obj:GetAttribute("Tier")
@@ -131,7 +185,6 @@ local function getActiveEggs()
 		end
 	end)
 	
-	-- Sortierung nach Seltenheit und höchstem Wert
 	table.sort(eggsData, function(a, b)
 		if a.Priority ~= b.Priority then
 			return a.Priority > b.Priority
@@ -143,6 +196,8 @@ local function getActiveEggs()
 end
 
 local function updateUI()
+	if isMinimized then return end
+	
 	for _, child in ipairs(scrollingFrame:GetChildren()) do
 		if child:IsA("Frame") then
 			child:Destroy()
@@ -156,9 +211,10 @@ local function updateUI()
 		if eggData.Rarity == "Secret" or eggData.Rarity == "Divine" or eggData.Rarity == "Eternal" then
 			count += 1
 			
+			-- Eier Karten-Design
 			local itemFrame = Instance.new("Frame")
 			itemFrame.Size = UDim2.new(1, 0, 0, 55)
-			itemFrame.BackgroundColor3 = Color3.fromRGB(26, 26, 36)
+			itemFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 32)
 			itemFrame.BorderSizePixel = 0
 			itemFrame.Parent = scrollingFrame
 			
@@ -177,11 +233,11 @@ local function updateUI()
 			label.TextXAlignment = Enum.TextXAlignment.Left
 			label.Parent = itemFrame
 			
-			-- Server Join Button
+			-- Server Join Button (Mit Server-Wechsel Fix)
 			local joinBtn = Instance.new("TextButton")
 			joinBtn.Size = UDim2.new(0.25, 0, 0.7, 0)
 			joinBtn.Position = UDim2.new(0.44, 0, 0.15, 0)
-			joinBtn.BackgroundColor3 = Color3.fromRGB(46, 139, 87)
+			joinBtn.BackgroundColor3 = Color3.fromRGB(34, 139, 34)
 			joinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 			joinBtn.Text = "Join Server"
 			joinBtn.Font = Enum.Font.GothamBold
@@ -193,18 +249,28 @@ local function updateUI()
 			joinCorner.Parent = joinBtn
 			
 			joinBtn.MouseButton1Click:Connect(function()
-				if eggData.InstanceId ~= game.JobId then
-					TeleportService:TeleportToPlaceInstance(game.PlaceId, eggData.InstanceId, player)
-				else
-					print("Du bist bereits auf diesem Server!")
-				end
+				pcall(function()
+					-- Wenn keine Instanz-ID da ist, suche nach anderen Servern über Roblox API oder Teleport
+					if eggData.InstanceId and eggData.InstanceId ~= game.JobId then
+						TeleportService:TeleportToPlaceInstance(game.PlaceId, eggData.InstanceId, player)
+					else
+						-- Fallback: Normaler Server Hop
+						local servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"))
+						for _, s in ipairs(servers.data) do
+							if s.id ~= game.JobId and s.playing < s.maxPlayers then
+								TeleportService:TeleportToPlaceInstance(game.PlaceId, s.id, player)
+								break
+							end
+						end
+					end
+				end)
 			end)
 			
-			-- Instant Steal Button (Mit Teleport & Remote-Bypass)
+			-- Instant Steal Button
 			local stealBtn = Instance.new("TextButton")
 			stealBtn.Size = UDim2.new(0.25, 0, 0.7, 0)
 			stealBtn.Position = UDim2.new(0.71, 0, 0.15, 0)
-			stealBtn.BackgroundColor3 = Color3.fromRGB(178, 34, 34)
+			stealBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
 			stealBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 			stealBtn.Text = "Instant Steal"
 			stealBtn.Font = Enum.Font.GothamBold
@@ -219,23 +285,16 @@ local function updateUI()
 				local char = player.Character
 				if char and char:FindFirstChild("HumanoidRootPart") and eggData.Model and eggData.Model.Parent then
 					local hrp = char.HumanoidRootPart
-					
-					-- 1. Direkt zum Ei teleportieren (Wächter-Mobs umgehen)
 					if eggData.Model:IsA("Model") then
 						hrp.CFrame = eggData.Model:GetPivot()
 					elseif eggData.Model:IsA("BasePart") then
 						hrp.CFrame = eggData.Model.CFrame
 					end
 					
-					-- 2. Versuchen, das Event des Spiels auszulösen, falls es existiert
 					local remote = findStealRemote()
 					if remote then
-						pcall(function()
-							remote:FireServer(eggData.Model)
-						end)
+						pcall(function() remote:FireServer(eggData.Model) end)
 					end
-					
-					print("Instant Steal ausgeführt für:", eggData.Name)
 				end
 			end)
 		end
@@ -244,7 +303,6 @@ local function updateUI()
 	scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, count * 63)
 end
 
--- Loop zur Aktualisierung
 task.spawn(function()
 	while true do
 		pcall(updateUI)
@@ -252,4 +310,4 @@ task.spawn(function()
 	end
 end)
 
-print("SAE Instant Steal Sniper geladen!")
+print("SAE Ultra Sniper erfolgreich geladen!")
