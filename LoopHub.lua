@@ -1,266 +1,189 @@
---!strict
 --[================================================================]--
---     ADVANCED "STEAL AN EGG" SYSTEM - MODERNE ARCHITEKTUR       --
+--       STEAL AN EGG - DELTA MOBILE / PC EXPLOIT GUI             --
 --[================================================================]--
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
-local Debris = game:GetService("Debris")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
 
--- 1. Ordner-Struktur aufbauen
-local Folders = {
-	Eggs = Workspace:FindFirstChild("Eggs") or Instance.new("Folder", Workspace),
-	Nests = Workspace:FindFirstChild("Nests") or Instance.new("Folder", Workspace),
-	Bases = Workspace:FindFirstChild("Bases") or Instance.new("Folder", Workspace),
-	Effects = Workspace:FindFirstChild("Effects") or Instance.new("Folder", Workspace),
-}
-Folders.Eggs.Name = "Eggs"
-Folders.Nests.Name = "Nests"
-Folders.Bases.Name = "Bases"
-Folders.Effects.Name = "Effects"
+local LocalPlayer = Players.LocalPlayer
 
--- 2. Erweiterte Konfiguration & Kategorien (Modern Config)
-local CONFIG = {
-	MaxEggsOnMap = 30,
-	SpawnInterval = 2.0,
-	BaseCapacity = 5, -- Start-Rucksack-Kapazität
-	StealCooldown = 1.5,
-	EggTypes = {
-		{Name = "Standard Egg", Value = 15, Rarity = "Common", Color = Color3.fromRGB(240, 240, 240), Chance = 50},
-		{Name = "Spotted Egg", Value = 35, Rarity = "Uncommon", Color = Color3.fromRGB(200, 150, 100), Chance = 25},
-		{Name = "Golden Egg", Value = 100, Rarity = "Rare", Color = Color3.fromRGB(255, 215, 0), Chance = 15},
-		{Name = "Diamond Egg", Value = 300, Rarity = "Epic", Color = Color3.fromRGB(0, 229, 255), Chance = 8},
-		{Name = "Void Egg", Value = 1000, Rarity = "Legendary", Color = Color3.fromRGB(128, 0, 128), Chance = 2},
-	}
-}
+-- Altes UI entfernen, falls es schon offen ist
+if CoreGui:FindFirstChild("StealAnEggHub") then
+	CoreGui.StealAnEggHub:Destroy()
+end
 
--- 3. Leaderstats & Player Data Erweiterung (Funktionen 1-5)
-Players.PlayerAdded:Connect(function(player)
-	local leaderstats = Instance.new("Folder")
-	leaderstats.Name = "leaderstats"
-	leaderstats.Parent = player
+-- Hauptfenster (ScreenGui) erstellen
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "StealAnEggHub"
+ScreenGui.Parent = CoreGui
+ScreenGui.IgnoreGuiInset = true
 
-	-- 1. Cash / Coins Währung
-	local cash = Instance.new("IntValue")
-	cash.Name = "Coins"
-	cash.Value = 100
-	cash.Parent = leaderstats
+-- Hauptrahmen (Design)
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 320, 0, 380)
+MainFrame.Position = UDim2.new(0.5, -160, 0.5, -190)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true -- Kann auf dem Bildschirm verschoben werden!
+MainFrame.Parent = ScreenGui
 
-	-- 2. Eier im Inventar / Rucksack
-	local eggsCarried = Instance.new("IntValue")
-	eggsCarried.Name = "Carried"
-	eggsCarried.Value = 0
-	eggsCarried.Parent = leaderstats
+-- Abgerundete Ecken für das Fenster
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 12)
+UICorner.Parent = MainFrame
 
-	-- 3. Gestohlene Eier Zähler
-	local stolenStat = Instance.new("IntValue")
-	stolenStat.Name = "Stolen"
-	stolenStat.Value = 0
-	stolenStat.Parent = leaderstats
+-- Titelbalken
+local TitleBar = Instance.new("TextLabel")
+TitleBar.Size = UDim2.new(1, 0, 0, 45)
+TitleBar.BackgroundColor3 = Color3.fromRGB(35, 35, 48)
+TitleBar.Text = "🥚 Steal an Egg Hub"
+TitleBar.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleBar.TextSize = 18
+TitleBar.Font = Enum.Font.GothamBold
+TitleBar.Parent = MainFrame
 
-	-- 4. Prestige / Level System
-	local level = Instance.new("IntValue")
-	level.Name = "Level"
-	level.Value = 1
-	level.Parent = leaderstats
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 12)
+TitleCorner.Parent = TitleBar
 
-	-- 5. Spieler-Attribute für erweiterte Statuswerte (Speed-Boost, Kapazität, Cooldown)
-	player:SetAttribute("EggCapacity", CONFIG.BaseCapacity)
-	player:SetAttribute("SpeedMultiplier", 1.0)
-	player:SetAttribute("HasShield", false)
-	player:SetAttribute("DoubleCoinsActive", false)
+-- Schließen-Button
+local CloseButton = Instance.new("TextButton")
+CloseButton.Size = UDim2.new(0, 35, 0, 35)
+CloseButton.Position = UDim2.new(1, -40, 0, 5)
+CloseButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+CloseButton.Text = "X"
+CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.TextSize = 16
+CloseButton.Font = Enum.Font.GothamBold
+CloseButton.Parent = TitleBar
 
-	-- Basis für den Spieler erstellen (Safezone)
-	task.defer(function()
-		local basePart = Instance.new("Part")
-		basePart.Name = player.Name .. "_Base"
-		basePart.Size = Vector3.new(12, 0.6, 12)
-		basePart.Position = Vector3.new(math.random(-50, 50), 0.3, math.random(-50, 50))
-		basePart.Anchored = true
-		basePart.BrickColor = BrickColor.new("Bright blue")
-		basePart.Material = Enum.Material.Neon
-		basePart.Parent = Folders.Bases
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 8)
+CloseCorner.Parent = CloseButton
 
-		-- Touch-Event für die Basis (Abgeben der Eier & Heilung)
-		basePart.Touched:Connect(function(hit)
-			local char = hit.Parent
-			local hum = char:FindFirstChildOfClass("Humanoid")
-			if hum then
-				local p = Players:GetPlayerFromCharacter(char)
-				if p == player then
-					local stats = p:FindFirstChild("leaderstats")
-					if stats then
-						local carried = stats:FindFirstChild("Carried")
-						local cCoins = stats:FindFirstChild("Coins")
-						if carried and carried.Value > 0 then
-							local earnings = carried.Value * (p:GetAttribute("DoubleCoinsActive") and 2 or 1)
-							cCoins.Value += earnings
-							carried.Value = 0
-							
-							-- Visueller Effekt beim Abgeben
-							local attachment = Instance.new("Attachment", basePart)
-							local particle = Instance.new("ParticleEmitter", attachment)
-							particle.Color = ColorSequence.new(Color3.fromRGB(0, 255, 128))
-							particle.Size = NumberSequence.new(1, 0)
-							particle.Rate = 50
-							task.delay(0.5, function() particle.Enabled = false end)
-							Debris:AddItem(attachment, 2)
-						end
-					end
-				end
-			end
-		end)
-	end)
+CloseButton.MouseButton1Click:Connect(function()
+	ScreenGui:Destroy()
 end)
 
--- 4. Dynamisches Spawnen von Eiern mit Seltenheits-Logik (Funktionen 6-10)
-local function getRandomEggType()
-	local rand = math.random(1, 100)
-	local currentChance = 0
-	for _, eggType in ipairs(CONFIG.EggTypes) do
-		currentChance += eggType.Chance
-		if rand <= currentChance then
-			return eggType
-		end
-	end
-	return CONFIG.EggTypes[1]
+-- Container für Buttons
+local ButtonContainer = Instance.new("ScrollingFrame")
+ButtonContainer.Size = UDim2.new(1, -20, 1, -60)
+ButtonContainer.Position = UDim2.new(0, 10, 0, 50)
+ButtonContainer.BackgroundTransparency = 1
+ButtonContainer.CanvasSize = UDim2.new(0, 0, 0, 300)
+ButtonContainer.ScrollBarThickness = 4
+ButtonContainer.Parent = MainFrame
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 10)
+UIListLayout.Parent = ButtonContainer
+
+-- Hilfsfunktion zum Erstellen von modernen Buttons
+local function createButton(text, callback)
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(1, 0, 0, 45)
+	btn.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
+	btn.Text = text
+	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	btn.TextSize = 15
+	btn.Font = Enum.Font.GothamMedium
+	btn.Parent = ButtonContainer
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = btn
+
+	btn.MouseButton1Click:Connect(callback)
+	return btn
 end
 
-local function spawnEggAtPosition(pos: Vector3)
-	if #Folders.Eggs:GetChildren() >= CONFIG.MaxEggsOnMap then return end
+-- --- FUNKTIONEN ---
 
-	local eggData = getRandomEggType()
+-- 1. Auto Collect / Steal Eier
+local autoCollectEnabled = false
+createButton("Auto Collect Eggs: OFF", function(btn)
+	autoCollectEnabled = not autoCollectEnabled
+	btn.Text = "Auto Collect Eggs: " .. (autoCollectEnabled and "ON" | "OFF")
+	btn.BackgroundColor3 = autoCollectEnabled and Color3.fromRGB(50, 180, 80) or Color3.fromRGB(45, 45, 60)
+end)
 
-	-- Modernes Ei-Modell mit Glow und Animation
-	local egg = Instance.new("Part")
-	egg.Name = eggData.Name
-	egg.Size = Vector3.new(2.2, 2.8, 2.2)
-	egg.Shape = Enum.PartType.Ball
-	egg.Position = pos + Vector3.new(0, 1.5, 0)
-	egg.Color = eggData.Color
-	egg.Material = Enum.Material.Glass
-	egg.Anchored = false
-	egg.CanCollide = true
-	egg.Parent = Folders.Eggs
-
-	-- 6. Outline / Highlight-Effekt (Moderne Optik)
-	local highlight = Instance.new("Highlight")
-	highlight.Adornee = egg
-	highlight.FillColor = eggData.Color
-	highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-	highlight.OutlineTransparency = 0.2
-	highlight.Parent = egg
-
-	-- 7. Floating Animation (Schwebe-Effekt per Tween)
-	local tweenInfo = TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
-	local tween = TweenService:Create(egg, tweenInfo, {Position = egg.Position + Vector3.new(0, 0.8, 0)})
-	tween:Play()
-
-	-- Werte-Attribute setzen
-	egg:SetAttribute("EggValue", eggData.Value)
-	egg:SetAttribute("Rarity", eggData.Rarity)
-
-	-- 8. Touch-Collect Logik mit Rucksack-Limit & Diebstahl-Schutz
-	local collected = false
-	egg.Touched:Connect(function(hit)
-		if collected then return end
-		local char = hit.Parent
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		
-		if hum and hum.Health > 0 then
-			local player = Players:GetPlayerFromCharacter(char)
-			if player then
-				local stats = player:FindFirstChild("leaderstats")
-				if stats then
-					local carried = stats:FindFirstChild("Carried")
-					local maxCap = player:GetAttribute("EggCapacity")
-					
-					if carried and carried.Value < maxCap then
-						collected = true
-						carried.Value += 1
-						
-						-- Stolen Zähler erhöhen
-						local stolen = stats:FindFirstChild("Stolen")
-						if stolen then stolen.Value += 1 end
-
-						-- 9. Floating Text / Sound / Partikeleffekt beim Aufheben
-						local root = char:FindFirstChild("HumanoidRootPart")
-						if root then
-							local pEmit = Instance.new("ParticleEmitter", root)
-							pEmit.Color = ColorSequence.new(eggData.Color)
-							pEmit.Size = NumberSequence.new(0.5, 0)
-							pEmit.Rate = 30
-							task.delay(0.2, function() pEmit.Enabled = false end)
-							Debris:AddItem(pEmit, 1)
-						end
-
-						egg:Destroy()
-					end
-				end
-			end
-		end
-	end)
-end
-
--- 5. Nester-Generierung (Funktion 11-12: Verschiedene Nest-Typen mit unterschiedlichen Spawn-Raten)
-local nestPositions = {
-	{Pos = Vector3.new(20, 0, 20), Tier = "Normal"},
-	{Pos = Vector3.new(-20, 0, 20), Tier = "Normal"},
-	{Pos = Vector3.new(20, 0, -20), Tier = "Normal"},
-	{Pos = Vector3.new(-20, 0, -20), Tier = "Normal"},
-	{Pos = Vector3.new(0, 0, 40), Tier = "Hotspot"}, -- Höhere Rarity-Chance
-	{Pos = Vector3.new(0, 0, -40), Tier = "Hotspot"}
-}
-
-for _, nestInfo in ipairs(nestPositions) do
-	local nest = Instance.new("Part")
-	nest.Name = nestInfo.Tier .. "Nest"
-	nest.Size = Vector3.new(5, 0.4, 5)
-	nest.Shape = Enum.PartType.Cylinder
-	nest.Position = nestInfo.NestPos or nestInfo.Pos
-	nest.Anchored = true
-	nest.BrickColor = BrickColor.new("Dark stone grey")
-	nest.Material = Enum.Material.Slate
-	nest.Parent = Folders.Nests
-end
-
--- 6. Haupt-Spawn-Loop mit Event-System (Funktionen 13-15: Random Events wie "Golden Hour" oder "Double Spawn")
-local activeEvent = "Normal"
-task.spawn(function()
-	while true do
-		task.wait(CONFIG.SpawnInterval)
-		
-		-- Zufälliges Event alle paar Minuten triggern
-		if math.random(1, 100) == 1 then
-			activeEvent = "GoldenHour"
-			task.delay(30, function() activeEvent = "Normal" end)
-		end
-
-		if #nestPositions > 0 then
-			local randomNest = nestPositions[math.random(1, #nestPositions)]
-			spawnEggAtPosition(randomNest.Pos + Vector3.new(math.random(-3, 3), 0, math.random(-3, 3)))
+RunService.RenderStepped:Connect(function()
+	if autoCollectEnabled then
+		pcall(function()
+			local char = LocalPlayer.Character
+			local root = char and char:FindFirstChild("HumanoidRootPart")
+			local eggsFolder = Workspace:FindFirstChild("Eggs")
 			
-			if activeEvent == "GoldenHour" then
-				spawnEggAtPosition(randomNest.Pos + Vector3.new(math.random(-3, 3), 0, math.random(-3, 3)))
+			if root and eggsFolder then
+				for _, egg in ipairs(eggsFolder:GetChildren()) do
+					if egg:IsA("BasePart") then
+						-- Teleportiert den Spieler kurz zum Ei, um es sofort einzusammeln
+						root.CFrame = egg.CFrame + Vector3.new(0, 1, 0)
+						task.wait(0.05)
+					end
+				end
+			end
+		end)
+	end
+end)
+
+-- 2. Speed Hack
+local speedEnabled = false
+createButton("Speed Hack (WalkSpeed 32): OFF", function(btn)
+	speedEnabled = not speedEnabled
+	btn.Text = "Speed Hack: " .. (speedEnabled and "ON" | "OFF")
+	btn.BackgroundColor3 = speedEnabled and Color3.fromRGB(50, 180, 80) or Color3.fromRGB(45, 45, 60)
+	
+	local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+	if hum then
+		hum.WalkSpeed = speedEnabled and 32 or 16
+	end
+end)
+
+-- 3. Zu eigener Basis / Safezone teleportieren
+createButton("Teleport to My Base", function()
+	pcall(function()
+		local char = LocalPlayer.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart")
+		local basesFolder = Workspace:FindFirstChild("Bases")
+		
+		if root and basesFolder then
+			local myBase = basesFolder:FindFirstChild(LocalPlayer.Name .. "_Base")
+			if myBase then
+				root.CFrame = myBase.CFrame + Vector3.new(0, 3, 0)
+			end
+		end
+	end)
+end)
+
+-- 4. ESP / Eier durch Wände sehen
+local espEnabled = false
+createButton("Egg ESP (Highlight): OFF", function(btn)
+	espEnabled = not espEnabled
+	btn.Text = "Egg ESP: " .. (espEnabled and "ON" | "OFF")
+	btn.BackgroundColor3 = espEnabled and Color3.fromRGB(50, 180, 80) or Color3.fromRGB(45, 45, 60)
+	
+	local eggsFolder = Workspace:FindFirstChild("Eggs")
+	if eggsFolder then
+		for _, egg in ipairs(eggsFolder:GetChildren()) do
+			if espEnabled then
+				if not egg:FindFirstChild("EspHighlight") then
+					local hl = Instance.new("Highlight")
+					hl.Name = "EspHighlight"
+					hl.FillColor = Color3.fromRGB(255, 215, 0)
+					hl.Parent = egg
+				end
+			else
+				if egg:FindFirstChild("EspHighlight") then
+					egg.EspHighlight:Destroy()
+				end
 			end
 		end
 	end
 end)
 
--- 7. Anti-Exploit & Physics Security (Funktionen 16-20)
--- Verhindert, dass Spieler Eier durch die Map glitchen oder fliegen
-Players.PlayerAdded:Connect(function(player)
-	player.CharacterAdded:Connect(function(char)
-		local hum = char:WaitForChild("Humanoid")
-		hum.Died:Connect(function()
-			-- Bei Tod verliert der Spieler alle getragenen Eier!
-			local stats = player:FindFirstChild("leaderstats")
-			if stats then
-				local carried = stats:FindFirstChild("Carried")
-				if carried then carried.Value = 0 end
-			end
-		end)
-	end)
-end)
+print("Steal an Egg Hub erfolgreich geladen!")
